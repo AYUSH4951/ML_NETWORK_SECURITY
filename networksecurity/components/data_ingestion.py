@@ -12,6 +12,10 @@ from sklearn.model_selection import train_test_split
 from dotenv import load_dotenv
 load_dotenv()
 
+import dns.resolver
+dns.resolver.default_resolver = dns.resolver.Resolver(configure=False)
+dns.resolver.default_resolver.nameservers = ['8.8.8.8', '1.1.1.1']
+
 MONGO_DB_URL=os.getenv("MONGO_DB_URL")
 
 class DataIngestion:
