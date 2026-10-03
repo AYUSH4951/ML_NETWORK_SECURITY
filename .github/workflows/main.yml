@@ -1,0 +1,90 @@
+name: main
+
+on:
+  push:
+    branches:
+      - main
+      - ayush
+    paths-ignore:
+      - 'README.md'
+      - '.gitignore'
+      - '.dockerignore'
+      - 'docs/**'
+  pull_request:
+    branches:
+      - main
+    paths-ignore:
+      - 'README.md'
+      - '.gitignore'
+      - '.dockerignore'
+      - 'docs/**'
+
+permissions:
+  contents: read
+
+jobs:
+  continuous-integration:
+    name: Continuous Integration (Lint, Test, Validate)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      - name: Run ML Unit Tests & Validations
+        run: |
+          python -m unittest discover -s tests -p "test_*.py"
+
+  docker-build:
+    name: Docker Build Validation
+    needs: continuous-integration
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: false
+          tags: ml-network-security:latest
+
+  render-deploy:
+    name: Render Deployment Notification
+    needs: [continuous-integration, docker-build]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Trigger Render Deploy Hook
+        if: env.RENDER_DEPLOY_HOOK_URL != ''
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: |
+          echo "Triggering Render deployment hook..."
+          curl -f -X POST "$RENDER_DEPLOY_HOOK_URL"
+          echo "Render deployment hook successfully triggered."
+
+      - name: Notify Native Auto-Deploy
+        if: env.RENDER_DEPLOY_HOOK_URL == ''
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: |
+          echo "Render Deploy Hook URL not configured; relying on Render Native Git Auto-Deploy on branch 'main'."
