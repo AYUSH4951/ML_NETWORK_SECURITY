@@ -24,7 +24,6 @@ import mlflow
 from urllib.parse import urlparse
 
 import dagshub
-dagshub.init(repo_owner='ayush49.sharma', repo_name='ML_NETWORK_SECURITY', mlflow=True)
 
 
 class ModelTrainer:
@@ -32,12 +31,20 @@ class ModelTrainer:
         try:
             self.model_trainer_config=model_trainer_config
             self.data_transformation_artifact=data_transformation_artifact
+            self._dagshub_initialized = False
         except Exception as e:
             raise NetworkSecurityException(e,sys)
 
     def track_mlflow(self,best_model,classificationmetric):
         #mlflow.set_registry_uri("")
         #tracking_url_type_store = urlparse(mlflow.get_tracking_uri()).scheme
+        try:
+            if not getattr(self, "_dagshub_initialized", False):
+                dagshub.init(repo_owner='ayush49.sharma', repo_name='ML_NETWORK_SECURITY', mlflow=True)
+                self._dagshub_initialized = True
+        except Exception as e:
+            logging.warning(f"DAGsHub initialization skipped or failed: {e}")
+
         with mlflow.start_run():
             f1_score=classificationmetric.f1_score
             precision_score=classificationmetric.precision_score
