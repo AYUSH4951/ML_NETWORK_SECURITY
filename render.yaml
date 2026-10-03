@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: ml-network-security
+    runtime: docker
+    dockerfilePath: Dockerfile
+    dockerContext: .
+    plan: free
+    region: oregon
+    healthCheckPath: /docs
+    envVars:
+      - key: PORT
+        value: 8000
+      - key: MONGODB_URL_KEY
+        sync: false
+      - key: MONGO_DB_URL
+        sync: false
